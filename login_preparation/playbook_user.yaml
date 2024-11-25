@@ -17,6 +17,18 @@
         user_group: wheel
       when: ansible_os_family == 'RedHat'
 
+    - name: Assign the host name
+      hostname:
+        name: 'ansible-{{ ansible_os_family }}'
+
+    - name: Assign the host name in hosts
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '^{{ ansible_all_ipv4_addresses[0] }} {{ ansible_hostname }}'
+        line: '{{ ansible_all_ipv4_addresses[0] }} {{ ansible_hostname }}'
+        state: present
+        insertafter: EOF
+
     - name: Create User on Server
       user:
         name: '{{ new_user }}'
