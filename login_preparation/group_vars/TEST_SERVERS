@@ -1,0 +1,3 @@
+ansible_user : root
+new_user: sannjka
+new_pass: "$6$secsalt$takDXzpe3EPdSH9W0oG4dNuQL3f9.XPX2ThyQ81SA4yGJHc9EhsSG/7HSmKiMaW8dfNlcWDjWis19MpqzRi1s0"

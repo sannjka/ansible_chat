@@ -1,0 +1,88 @@
+- name: Create user on server
+  hosts: all
+  remote_user: root
+  gather_facts: yes
+
+  tasks:
+    - name: Ping Servers
+      ping:
+        
+    - name: Set User Group
+      set_fact:
+        user_group: sudo
+      when: ansible_os_family == 'Debian'
+    
+    - name: Set User Group
+      set_fact:
+        user_group: wheel
+      when: ansible_os_family == 'RedHat'
+
+    - name: Create User on Server
+      user:
+        name: '{{ new_user }}'
+        password: '{{ new_pass }}'
+        groups:
+          - '{{ user_group }}'
+        state: present
+        shell: /bin/bash
+        system: yes
+        createhome: yes
+        home: '/home/{{ new_user }}'
+
+    - name: Set up multiple authorized keys
+      authorized_key:
+        user: '{{ new_user }}'
+        state: present
+        key: '{{ item }}'
+      with_file:
+        - public_keys/desktop.pub
+        - public_keys/laptop.pub
+
+    - name: Disable Root Login
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin no'
+        state: present
+        backup: yes
+        insertafter: EOF
+      become: yes
+      notify:
+        - Restart ssh
+    
+    - name: Collect files in /etc/ssh/sshd_config.d/
+      find:
+        path: /etc/ssh/sshd_config.d/
+      register: collected_files
+
+    - name: Delete Collected File permitrootlogin and permitpasswordauth
+      file:
+        path: '{{ item.path }}'
+        state: absent
+      with_items: '{{ collected_files.files }}'
+      notify:
+        - Restart ssh
+    
+    - name: Permit user work without sudo pass
+      copy:
+        dest: '/etc/sudoers.d/{{ new_user }}'
+        content: '{{ new_user }} ALL=(ALL:ALL) NOPASSWD:ALL'
+
+    - name: Prohibit password authentication
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+        backup: yes
+        insertafter: EOF
+      become: yes
+      notify:
+        - Restart ssh
+
+
+  handlers:
+    - name: Restart ssh
+      service:
+        name: sshd
+        state: restarted
