@@ -1,0 +1,59 @@
+- block: #====Block Debian====
+  - name: Install ans set up firewall
+    tags:
+      - install
+      - firewall
+    block:
+    - name: Install Uncomplicated firewall
+      apt: name=ufw state=latest
+        
+    - name: Set logging
+      ufw: logging=on
+
+    - name: Deny incoming
+      ufw: direction=incoming policy=deny
+
+    - name: Allow outging
+      ufw: direction=outgoing policy=allow
+
+    - name: Allow port 22
+      ufw: rule=allow port=22
+
+    - name: Limit ssh connection rate
+      ufw:
+        rule: limit
+        port: ssh
+        proto: tcp
+
+    - name: Allow port 80
+      ufw: rule=allow port=http proto=tcp
+
+    - name: Allow https
+      ufw: rule=allow port=https
+
+    - name: Enable ufw
+      ufw: state=enabled policy=allow
+
+  when: ansible_os_family == 'Debian'
+
+- block: #====Block RedHat====
+  - name: Install and set up firewall
+    tags:
+      - install
+      - firewall
+    block:
+    - name: Enable https service
+      firewalld:
+        service: https
+        state: enabled
+        permanent: true
+        immediate: true
+        offline: true
+    - name: Enable http service
+      firewalld:
+        service: http
+        state: enabled
+        permanent: true
+        immediate: true
+        offline: true
+  when: ansible_os_family == 'RedHat'

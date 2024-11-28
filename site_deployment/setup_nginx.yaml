@@ -1,0 +1,56 @@
+- block: #====Block Debian====
+  - name: Install Nginx Web Server for Debian
+    apt: name=nginx state=latest update_cache=yes
+    tags:
+      - install
+      - nginx
+  when: ansible_os_family == 'Debian'
+
+- block: #====Block RedHat====
+  - name: Install Nginx Web Server for RedHat
+    yum: name=nginx state=latest
+    tags:
+      - install
+      - nginx
+
+  - name: Change PrivateTmp=true to PrivateTmp=false
+    lineinfile:
+      path: /usr/lib/systemd/system/nginx.service
+      regexp: '^PrivateTmp'
+      line: 'PrivateTmp=false'
+    notify:
+      - daemon-reload
+      - Restart Nginx
+    tags:
+      - install
+      - nginx
+      
+  - name: Start Nginx
+    service: name=nginx state=started
+    tags:
+      - install
+      - nginx
+
+  when: ansible_os_family == 'RedHat'
+
+- name: Add nginx to ansible_user group
+  user:
+      name: "{{ nginx_user }}"
+      groups: "{{ ansible_user }}"
+      append: yes
+  notify:
+    - Restart Nginx
+  tags:
+    - install
+    - nginx
+
+- name: Chmod for /home/{{ ansible_user }}
+  file: 
+    path: "/home/{{ ansible_user }}"
+    mode: '0710'
+  notify:
+    - Restart Nginx
+  tags:
+    - install
+    - nginx
+

@@ -1,0 +1,57 @@
+- name: Create site folder
+  file: 
+    path: "/home/{{ ansible_user }}/sites/{{ ansible_host }}"
+    state: directory
+    mode: '0755'
+
+- name: Git update
+  git:
+    repo: "{{ repo }}"
+    dest: "/home/{{ ansible_user }}/sites/{{ ansible_host }}"
+    update: yes
+    force: yes
+    version: HEAD
+
+- name: Generate nginx conf
+  template:
+    src: "{{ source_folder }}/nginx.template.http.j2"
+    dest: "{{ nginx_conf_folder }}/{{ ansible_host }}.conf"
+    mode: 0555
+  notify: Restart Nginx
+
+- name: Make symlinc
+  file:
+    src: "{{ nginx_conf_folder }}/{{ ansible_host }}.conf"
+    dest: "{{ link_folder }}/{{ ansible_host }}.conf"
+    state: link
+  notify: Restart Nginx
+  when: ansible_os_family == 'Debian'
+
+
+- name: Copy static files
+  copy:
+    src: "/home/{{ ansible_user }}/sites/{{ ansible_host }}/src/static"
+    dest: "/home/{{ ansible_user }}/sites/{{ ansible_host }}"
+    remote_src: yes
+
+- name: Copy .env(s)
+  copy:
+    src: "{{ item }}"
+    dest: "/home/{{ ansible_user }}/sites/{{ ansible_host }}"
+  loop:
+    - .env-docker
+    - .env-postgres
+
+- name: Create Docker compose yml
+  template:
+    src: "{{ source_folder }}/docker-compose.j2"
+    dest: "/home/{{ ansible_user }}/sites/{{ ansible_host }}/docker-compose.yml"
+    mode: 0555
+
+- name: Docker compose up
+  community.docker.docker_compose_v2:
+    project_src: "/home/{{ ansible_user }}/sites/{{ ansible_host }}"
+    state: present
+    build: always
+  notify: Restart Nginx
+

@@ -1,0 +1,82 @@
+- name: Install nginx, docker and deploy website
+  hosts: all
+  become: yes
+  remote_user: "{{ ansible_user }}"
+  gather_facts: yes
+
+  vars:
+    source_folder: ./
+    destin_folder_debian: /etc/nginx/sites-available
+    destin_folder_redhat: /etc/nginx/conf.d
+    link_folder: /etc/nginx/sites-enabled
+
+  tasks:
+
+    - name: Set Nginx conf Folder
+      set_fact:
+        nginx_conf_folder: '{{ destin_folder_debian }}'
+        nginx_user: www-data
+      when: ansible_os_family == 'Debian'
+      tags:
+        - always
+    
+    - name: Set Nginx conf Folder
+      set_fact:
+        nginx_conf_folder: '{{ destin_folder_redhat }}'
+        nginx_user: nginx
+      when: ansible_os_family == 'RedHat'
+      tags:
+        - always
+
+    - include_tasks:
+        file: setup_firewall.yaml
+        apply: 
+          tags:
+            - install
+            - firewall
+      tags:
+        - always
+
+    - include_tasks:
+        file: setup_nginx.yaml
+        apply: 
+          tags:
+            - install
+            - nginx
+      tags:
+        - always
+
+    - include_tasks:
+        file: setup_docker.yaml
+        apply: 
+          tags:
+            - install
+            - docker
+      tags:
+        - always
+
+    - include_tasks:
+        file: setup_git.yaml
+        apply: 
+          tags:
+            - install
+            - git
+      tags:
+        - always
+
+    - include_tasks:
+        file: deploy_site.yaml
+        apply: 
+          tags:
+            - deploy
+            - nginx conf
+            - docker compose up
+      tags:
+        - always
+
+  handlers:
+    - name: Restart Nginx
+      service: name=nginx state=restarted
+    - name: daemon-reload
+      systemd_service: 
+        daemon_reload: true

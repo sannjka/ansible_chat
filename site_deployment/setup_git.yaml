@@ -1,0 +1,19 @@
+- block: #====Block Debian====
+  - name: Install git for Debian
+    apt: 
+      name: git
+      state: present
+    tags:
+      - install
+      - git
+  when: ansible_os_family == 'Debian'
+
+- block: #====Block RedHat====
+  - name: Install git for RedHat
+    yum: 
+      name: git
+      state: present
+    tags:
+      - install
+      - git
+  when: ansible_os_family == 'RedHat'
